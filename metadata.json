@@ -1,0 +1,6 @@
+{
+  "name": "GastoDiário",
+  "description": "Rastreador de gastos diários inteligente com entrada por voz, OCR de recibos, lembretes automáticos e relatórios exportáveis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
