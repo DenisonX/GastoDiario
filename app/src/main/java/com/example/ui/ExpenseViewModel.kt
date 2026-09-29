@@ -9,6 +9,7 @@ import com.example.data.AppDatabase
 import com.example.data.ExpenseEntity
 import com.example.data.ExpenseRepository
 import com.example.data.UserPreferencesManager
+import com.example.domain.DailyReminderScheduler
 import com.example.domain.ExpenseCategory
 import com.example.domain.ExpenseCategorizer
 import com.example.domain.NotificationHelper
@@ -88,6 +89,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = ExpenseUiState()
         )
+
+        DailyReminderScheduler.scheduleFromPreferences(application)
 
         // Seed initial sample expenses for realistic first launch experience if empty
         viewModelScope.launch {
@@ -327,10 +330,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateRemindersEnabled(enabled: Boolean) {
         preferencesManager.setRemindersEnabled(enabled)
+        DailyReminderScheduler.schedule(getApplication(), enabled, dailyReminderTime.value)
     }
 
     fun updateDailyReminderTime(timeStr: String) {
         preferencesManager.setDailyReminderTime(timeStr)
+        DailyReminderScheduler.schedule(getApplication(), remindersEnabled.value, timeStr)
     }
 
     /**

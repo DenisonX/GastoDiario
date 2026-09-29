@@ -71,6 +71,9 @@ secrets {
   ignoreList.add("FIREBASE_APPCHECK_DEBUG_TOKEN")
 }
 
+// Room writes one JSON per schema version here; commit them to review and test migrations.
+ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
 
 // Some unused dependencies are commented out below instead of being removed.

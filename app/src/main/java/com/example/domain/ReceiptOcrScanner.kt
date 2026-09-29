@@ -58,14 +58,35 @@ object ReceiptOcrScanner {
                 }
         }
 
+    /**
+     * Matches monetary values with exactly two decimal places, with or without thousands
+     * separators: 12,34 · 12.34 · 1.234,56 · 1,234.56 · 12.345.678,90.
+     * The lookarounds prevent matching fragments of dates (12.03.2026) or longer numbers.
+     */
+    private val priceRegex =
+        Regex("""(?<![\d.,])(\d{1,3}(?:[.,]\d{3})+[.,]\d{2}|\d{1,6}[.,]\d{2})(?!\d|[.,]\d)""")
+
+    /**
+     * Converts a matched price string into a Double. The separator before the last two
+     * digits is always the decimal separator; every other separator is a thousands separator.
+     */
+    fun parseAmount(raw: String): Double? {
+        val value = raw.trim()
+        if (value.length < 4) return null
+        val decimalSeparator = value[value.length - 3]
+        if (decimalSeparator != ',' && decimalSeparator != '.') return null
+        val integerPart = value.substring(0, value.length - 3).filter { it.isDigit() }
+        val cents = value.takeLast(2)
+        if (integerPart.isEmpty() || !cents.all { it.isDigit() }) return null
+        return "$integerPart.$cents".toDoubleOrNull()
+    }
+
     fun parseReceiptText(rawText: String): ReceiptScanResult {
         val lines = rawText.lines().map { it.trim() }.filter { it.isNotEmpty() }
 
         var merchantName = ""
         var totalAmount = 0.0
 
-        // Price regex matching 12,34 or 12.34 or R$ 12,34
-        val priceRegex = Regex("""(?:r\$\s*)?(\d{1,5}[,\.]\d{2})""", RegexOption.IGNORE_CASE)
 
         // 1. Identify Merchant Name from top 5 lines
         for (i in 0 until minOf(5, lines.size)) {
@@ -95,8 +116,7 @@ object ReceiptOcrScanner {
             if (totalKeywords.any { lower.contains(it) }) {
                 val matches = priceRegex.findAll(line).toList()
                 if (matches.isNotEmpty()) {
-                    val lastMatch = matches.last().groupValues[1].replace(".", "").replace(",", ".")
-                    val parsed = lastMatch.toDoubleOrNull()
+                    val parsed = parseAmount(matches.last().groupValues[1])
                     if (parsed != null && parsed > 0) {
                         totalAmount = parsed
                         foundExplicitTotal = true
@@ -111,7 +131,7 @@ object ReceiptOcrScanner {
             val allAmounts = mutableListOf<Double>()
             for (line in lines) {
                 for (match in priceRegex.findAll(line)) {
-                    val num = match.groupValues[1].replace(".", "").replace(",", ".").toDoubleOrNull()
+                    val num = parseAmount(match.groupValues[1])
                     if (num != null && num in 0.50..50000.0) {
                         allAmounts.add(num)
                     }
